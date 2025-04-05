@@ -45,6 +45,7 @@ export default function UploadMeetingPage() {
           <Label htmlFor="meetingAudio">Select Meeting Audio</Label>
           <Input
             id="meetingAudio"
+            className="w-full"
             type="file"
             accept="audio/*"
             onChange={handleFileChange}

@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Eye, EyeOff } from "lucide-react";
 
 const schema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -20,14 +21,13 @@ const schema = z.object({
 export default function SignUpPage() {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
   });
 
   async function handleSignup(data: { email: string; password: string; fullName: string; }) {
-    setIsSubmitting(true);
     const { email, password, fullName } = data;
 
     const { error } = await supabase.auth.signUp({
@@ -39,8 +39,6 @@ export default function SignUpPage() {
         },
       },
     });
-
-    setIsSubmitting(false);
 
     if (error) {
       if (error.message.includes("already registered")) {
@@ -78,14 +76,27 @@ export default function SignUpPage() {
           {errors.email && <span className="text-red-500">{errors.email.message}</span>}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 relative">
           <Label htmlFor="password">Password</Label>
+          <div
+            className="flex flex-row items-center"
+          >
           <Input
             id="password"
-            type="password"
+            className="rounded-r-none"
+            type={showPassword ? "text" : "password"}
             placeholder="Your password"
             {...register("password")}
           />
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="rounded-l-none"
+          >
+            {showPassword ? <EyeOff /> : <Eye />}
+          </Button>
+          </div>
           {errors.password && <span className="text-red-500">{errors.password.message}</span>}
         </div>
 
@@ -100,8 +111,8 @@ export default function SignUpPage() {
           <div className="text-red-500 text-sm">{errorMessage}</div>
         )}
 
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Signing up..." : "Sign Up"}
+        <Button type="submit" className="w-full">
+          Sign Up
         </Button>
       </form>
     </div>
