@@ -4,8 +4,10 @@ dotenv.config();
 
 // Load environment variables
 
+console.log(process.env.SUPABASE_URL);
+console.log(process.env.SUPABASE_ANON_KEY);
+
 export const SUPABASE_URL = process.env.SUPABASE_URL as string;
-export const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
 export const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY as string; 
 
 export const AWS_REGION = process.env.AWS_REGION as string;

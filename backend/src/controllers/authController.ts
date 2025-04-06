@@ -1,29 +1,39 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
+import { withRetry } from '../utils/supabaseRetry';
+import { logger } from '../utils/logger';
 
 // POST /api/v1/auth/signup
 export const signup = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, full_name } = req.body;
+    logger.info(`Attempting to sign up user with email: ${email}`);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name,
+    const { data, error } = await withRetry(
+      () => supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name,
+          },
         },
-      },
-    });
+      }),
+      { operationName: 'User signup' }
+    );
 
     if (error) {
+      logger.warn(`Signup failed for email: ${email}`, { error: error.message });
       res.status(400).json({ message: error.message });
       return;
     }
 
+    logger.info(`User signed up successfully: ${email}`);
     res.status(201).json({ message: 'User signed up successfully!', user: data.user });
   } catch (error) {
-    res.status(500).json({ message: 'An unexpected error occurred' });
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+    logger.error('Signup process failed', error instanceof Error ? error : undefined);
+    res.status(500).json({ message: errorMessage });
   }
 }
 
@@ -31,23 +41,31 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
+    logger.info(`Login attempt for user: ${email}`);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error } = await withRetry(
+      () => supabase.auth.signInWithPassword({
+        email,
+        password,
+      }),
+      { operationName: 'User login' }
+    );
 
     if (error || !data.session) {
+      logger.warn(`Login failed for email: ${email}`, { error: error?.message });
       res.status(401).json({ message: error?.message || 'Invalid credentials.' });
       return;
     }
 
+    logger.info(`User logged in successfully: ${email}`);
     res.status(200).json({
       message: 'Login successful!',
       session: data.session, // Contains access_token, refresh_token, etc.
     });
   } catch (error) {
-    res.status(500).json({ message: 'An unexpected error occurred' });
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+    logger.error('Login process failed', error instanceof Error ? error : undefined);
+    res.status(500).json({ message: errorMessage });
   }
 }
 
@@ -56,26 +74,36 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
   const { user } = res.locals;
 
   if (!user) {
+    logger.warn('Logout attempt without authentication');
     res.status(401).json({ message: 'Not authenticated' });
     return;
   }
 
+  logger.info(`User logged out: ${user.email}`);
   // Client should clear tokens locally; we just return success here
   res.status(200).json({ message: 'Logout successful. Clear tokens client-side.' });
 }
 
 // GET /api/v1/auth/me
 export const getCurrentUser = async (req: Request, res: Response): Promise<void> => {
-  const { user } = res.locals;
+  try {
+    const { user } = res.locals;
 
-  if (!user) {
-    res.status(401).json({ message: 'Not authenticated' });
-    return;
+    if (!user) {
+      logger.warn('Current user request without authentication');
+      res.status(401).json({ message: 'Not authenticated' });
+      return;
+    }
+
+    logger.debug(`Current user data accessed: ${user.email}`);
+    res.status(200).json({
+      id: user.id,
+      email: user.email,
+      full_name: user.user_metadata?.full_name || '',
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+    logger.error('Current user retrieval failed', error instanceof Error ? error : undefined);
+    res.status(500).json({ message: errorMessage });
   }
-
-  res.status(200).json({
-    id: user.id,
-    email: user.email,
-    full_name: user.user_metadata?.full_name || '',
-  });
 }

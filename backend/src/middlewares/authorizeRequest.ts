@@ -18,12 +18,11 @@ export const authorizeRequest = (req: Request, res: Response, next: NextFunction
 
     try {
         const token = req.headers.authorization?.split(' ')[1];
-        if (token === TOKEN_SECRET) {
-            next();
-        } else {
+        if (token !== TOKEN_SECRET) {
             res.status(401).json({ message: 'Unauthorized' });
             return;
         }
+        next();
     } catch (error) {
         res.status(401).json({ message: 'Unauthorized' });
         return;
