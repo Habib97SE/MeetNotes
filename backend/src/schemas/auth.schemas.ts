@@ -15,8 +15,6 @@ export const loginSchema = z.object({
   })
 });
 
-
-
 // Types inferred from the schemas
 export type SignupInput = z.infer<typeof signupSchema>['body'];
 export type LoginInput = z.infer<typeof loginSchema>['body']; 

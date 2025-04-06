@@ -7,8 +7,16 @@ import { logger } from '../utils/logger';
 export const signup = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, full_name } = req.body;
+    
+    // Validate required fields
+    if (!email || !password || !full_name) {
+      res.status(400).json({ message: 'Email, password, and full name are required.' });
+      return;
+    }
+    
     logger.info(`Attempting to sign up user with email: ${email}`);
 
+    // Sign up user with Supabase Auth
     const { data, error } = await withRetry(
       () => supabase.auth.signUp({
         email,
@@ -28,8 +36,43 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // If user was created successfully, create a profile record
+    if (data.user) {
+      try {
+        // Create profile in the profiles table
+        const { error: profileError } = await withRetry(
+          () => supabase
+            .from('profiles')
+            .insert({
+              id: data.user?.id,
+              full_name,
+              email
+            }),
+          { operationName: 'Create user profile' }
+        );
+
+        if (profileError) {
+          logger.warn(`Profile creation failed for user ID: ${data.user.id}`, { error: profileError.message });
+          // We don't fail the signup if profile creation fails, just log it
+        } else {
+          logger.info(`Profile created for user ID: ${data.user.id}`);
+        }
+      } catch (profileError) {
+        logger.error(`Error creating profile for user ID: ${data.user.id}`, 
+          profileError instanceof Error ? profileError : undefined);
+        // We don't fail the signup if profile creation fails, just log it
+      }
+    }
+
     logger.info(`User signed up successfully: ${email}`);
-    res.status(201).json({ message: 'User signed up successfully!', user: data.user });
+    res.status(201).json({ 
+      message: 'User signed up successfully!', 
+      user: {
+        id: data.user?.id,
+        email: data.user?.email,
+        full_name
+      }
+    });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
     logger.error('Signup process failed', error instanceof Error ? error : undefined);
