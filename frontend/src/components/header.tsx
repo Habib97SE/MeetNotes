@@ -1,7 +1,23 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/features/auth/useAuth";
+import { signOut } from "@/features/auth/auth-helper";
+
 
 function Header() {
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+
+    const { user } = useAuth();
+
+    useEffect(() => {
+        if (user) {
+            setIsLoggedIn(true);
+        }
+    }, [user]);
+
     return (
         <header className="flex justify-between items-center p-4 bg-gray-100">
             <div>
@@ -12,7 +28,13 @@ function Header() {
                 </nav>
             </div>
             <div>
-                <Button variant="outline">Sign In</Button>
+                {isLoggedIn ? (
+                    <Button variant="outline" className="bg-red-500 text-white hover:bg-red-600 hover:text-white" onClick={signOut}>Sign Out</Button>
+                ) : (
+                    <Button variant="outline">
+                        <Link href="/auth/sign-in">Sign In</Link>
+                    </Button>
+                )}
             </div>
         </header>
     );

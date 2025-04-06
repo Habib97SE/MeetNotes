@@ -2,6 +2,7 @@
 
 import { supabase } from "@/lib/supabase-client";
 import { validateEmail, validatePassword, validateFullName } from "./validation";
+import { User } from './user-type';
 
 
 /**
@@ -31,12 +32,26 @@ export async function signUp(email: string, password: string, fullName: string) 
         throw new Error("Invalid full name");
     }
 
+    const defaultUser: Partial<User> = {
+        role: "user",
+        phone_number: "",
+        profile_picture: "",
+        birth_date: "",
+        gender: "",
+        address: "",
+        city: "",
+        state: "",
+        zip_code: "",
+        country: ""
+    };
+
     const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
             data: {
                 full_name: fullName,
+                ...defaultUser,
             },
         },
     });
@@ -94,6 +109,7 @@ export async function  signIn(email: string, password: string) {
  * @throws Throws an error if the sign-out process fails.
  */
 export async function signOut() {
+    console.log("Signing out");
     const { error } = await supabase.auth.signOut();
 
     if (error) {
